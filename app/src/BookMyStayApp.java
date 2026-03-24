@@ -2,62 +2,47 @@ public class BookMyStayApp {
 
     public static void main(String[] args) {
 
-        Room single = new SingleRoom();
-        Room dbl = new DoubleRoom();
-        Room suite = new SuiteRoom();
+        RoomInventory inventory = new RoomInventory();
 
-        int singleAvailability = 5;
-        int doubleAvailability = 3;
-        int suiteAvailability = 2;
+        System.out.println("===== Book My Stay App v3.1 =====");
 
-        System.out.println("===== Book My Stay App v2.1 =====");
+        inventory.displayInventory();
 
-        single.displayDetails();
-        System.out.println("Available: " + singleAvailability);
         System.out.println();
+        System.out.println("Updating availability...");
 
-        dbl.displayDetails();
-        System.out.println("Available: " + doubleAvailability);
+        inventory.updateRoom("Single Room", 4);
+        inventory.updateRoom("Double Room", 2);
+
         System.out.println();
-
-        suite.displayDetails();
-        System.out.println("Available: " + suiteAvailability);
+        inventory.displayInventory();
     }
 }
 
-abstract class Room {
-    String type;
-    int beds;
-    double price;
+class RoomInventory {
 
-    Room(String type, int beds, double price) {
-        this.type = type;
-        this.beds = beds;
-        this.price = price;
+    java.util.HashMap<String, Integer> rooms;
+
+    RoomInventory() {
+        rooms = new java.util.HashMap<>();
+
+        rooms.put("Single Room", 5);
+        rooms.put("Double Room", 3);
+        rooms.put("Suite Room", 2);
     }
 
-    void displayDetails() {
-        System.out.println("Room Type: " + type);
-        System.out.println("Beds: " + beds);
-        System.out.println("Price: " + price);
+    int getAvailability(String type) {
+        return rooms.getOrDefault(type, 0);
     }
-}
 
-class SingleRoom extends Room {
-    SingleRoom() {
-        super("Single Room", 1, 1000.0);
+    void updateRoom(String type, int count) {
+        rooms.put(type, count);
     }
-}
 
-class DoubleRoom extends Room {
-    DoubleRoom() {
-        super("Double Room", 2, 1800.0);
-    }
-}
-
-class SuiteRoom extends Room {
-    SuiteRoom() {
-        super("Suite Room", 3, 3500.0);
+    void displayInventory() {
+        for (String type : rooms.keySet()) {
+            System.out.println(type + " Available: " + rooms.get(type));
+        }
     }
 }
 
