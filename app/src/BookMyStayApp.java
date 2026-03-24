@@ -2,78 +2,84 @@ public class BookMyStayApp {
 
     public static void main(String[] args) {
 
-        java.util.Map<String, Integer> roomInventory = new java.util.HashMap<>();
-        roomInventory.put("Deluxe", 2);
-        roomInventory.put("Standard", 3);
-        roomInventory.put("Suite", 1);
+        java.util.Map<String, Integer> inventory = new java.util.HashMap<>();
+        inventory.put("Deluxe", 2);
+        inventory.put("Standard", 3);
+        inventory.put("Suite", 1);
 
-        java.util.List<Reservation> bookingHistory = new java.util.ArrayList<>();
-        java.util.Stack<String> releasedRoomIds = new java.util.Stack<>();
+        java.util.Queue<Reservation> bookingQueue = new java.util.LinkedList<>();
+        bookingQueue.offer(new Reservation("Alice", "Deluxe"));
+        bookingQueue.offer(new Reservation("Bob", "Standard"));
+        bookingQueue.offer(new Reservation("Charlie", "Suite"));
+        bookingQueue.offer(new Reservation("David", "Deluxe"));
+        bookingQueue.offer(new Reservation("Eve", "Standard"));
 
-        // Simulate confirmed bookings
-        bookingHistory.add(new Reservation("Alice", "Deluxe", "D23"));
-        bookingHistory.add(new Reservation("Bob", "Standard", "S5"));
-        bookingHistory.add(new Reservation("Charlie", "Suite", "S87"));
+        java.util.List<Reservation> confirmedBookings = new java.util.ArrayList<>();
 
-        System.out.println("=== Initial Bookings ===");
-        printBookings(bookingHistory);
+        class BookingThread extends Thread {
+            public void run() {
+                while (true) {
+                    Reservation res;
+                    synchronized (bookingQueue) {
+                        if (bookingQueue.isEmpty()) return;
+                        res = bookingQueue.poll();
+                    }
 
-        // Cancellation requests
-        String[] cancellations = {"Bob", "Charlie", "Eve"}; // Eve does not exist
-
-        for (String guestName : cancellations) {
-            try {
-                cancelBooking(guestName, bookingHistory, roomInventory, releasedRoomIds);
-                System.out.println("Cancellation successful for: " + guestName);
-            } catch (InvalidCancellationException e) {
-                System.out.println("Cancellation failed for " + guestName + ": " + e.getMessage());
+                    boolean success = allocateRoom(res, inventory, confirmedBookings);
+                    if (success) {
+                        System.out.println("Booking confirmed: " + res);
+                    } else {
+                        System.out.println("Booking failed (no rooms): " + res.guestName + " [" + res.roomType + "]");
+                    }
+                }
             }
         }
 
-        System.out.println("\n=== Final Booking History ===");
-        printBookings(bookingHistory);
+        // Simulate multiple threads
+        Thread t1 = new BookingThread();
+        Thread t2 = new BookingThread();
+        Thread t3 = new BookingThread();
 
-        System.out.println("\n=== Current Inventory ===");
-        for (String type : roomInventory.keySet()) {
-            System.out.println(type + " - Available: " + roomInventory.get(type));
+        t1.start();
+        t2.start();
+        t3.start();
+
+        try {
+            t1.join();
+            t2.join();
+            t3.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
 
-        System.out.println("\n=== Released Room IDs Stack ===");
-        System.out.println(releasedRoomIds);
-    }
-
-    static void cancelBooking(String guestName, java.util.List<Reservation> history,
-                              java.util.Map<String, Integer> inventory, java.util.Stack<String> rollbackStack)
-            throws InvalidCancellationException {
-
-        Reservation toCancel = null;
-        for (Reservation r : history) {
-            if (r.guestName.equals(guestName)) {
-                toCancel = r;
-                break;
-            }
-        }
-
-        if (toCancel == null) {
-            throw new InvalidCancellationException("Reservation not found or already cancelled.");
-        }
-
-        // Restore inventory
-        inventory.put(toCancel.roomType, inventory.get(toCancel.roomType) + 1);
-        rollbackStack.push(toCancel.roomId);
-
-        // Remove from booking history
-        history.remove(toCancel);
-    }
-
-    static void printBookings(java.util.List<Reservation> history) {
-        if (history.isEmpty()) {
-            System.out.println("No bookings.");
-        } else {
-            for (Reservation r : history) {
+        System.out.println("\n=== Final Confirmed Bookings ===");
+        synchronized (confirmedBookings) {
+            for (Reservation r : confirmedBookings) {
                 System.out.println(r);
             }
         }
+
+        System.out.println("\n=== Final Inventory ===");
+        synchronized (inventory) {
+            for (String type : inventory.keySet()) {
+                System.out.println(type + " - Available: " + inventory.get(type));
+            }
+        }
+    }
+
+    static boolean allocateRoom(Reservation r, java.util.Map<String, Integer> inventory,
+                                java.util.List<Reservation> confirmedBookings) {
+        synchronized (inventory) {
+            int available = inventory.getOrDefault(r.roomType, 0);
+            if (available <= 0) return false;
+            inventory.put(r.roomType, available - 1);
+        }
+
+        synchronized (confirmedBookings) {
+            r.roomId = r.roomType.substring(0, 1) + (int)(Math.random() * 100);
+            confirmedBookings.add(r);
+        }
+        return true;
     }
 }
 
@@ -82,20 +88,13 @@ class Reservation {
     String roomType;
     String roomId;
 
-    Reservation(String guestName, String roomType, String roomId) {
+    Reservation(String guestName, String roomType) {
         this.guestName = guestName;
         this.roomType = roomType;
-        this.roomId = roomId;
     }
 
     @Override
     public String toString() {
         return guestName + " [" + roomType + ", RoomID=" + roomId + "]";
-    }
-}
-
-class InvalidCancellationException extends Exception {
-    InvalidCancellationException(String message) {
-        super(message);
     }
 }
