@@ -2,88 +2,65 @@ public class BookMyStayApp {
 
     public static void main(String[] args) {
 
-        java.util.Queue<Reservation> bookingQueue = new java.util.LinkedList<>();
-        bookingQueue.offer(new Reservation("Alice", "Deluxe"));
-        bookingQueue.offer(new Reservation("Bob", "Standard"));
-        bookingQueue.offer(new Reservation("Charlie", "Suite"));
-        bookingQueue.offer(new Reservation("David", "Deluxe"));
-        bookingQueue.offer(new Reservation("Eve", "Standard"));
+        java.util.Map<String, java.util.List<Service>> reservationServices = new java.util.HashMap<>();
 
-        InventoryService inventory = new InventoryService();
+        java.util.List<Reservation> reservations = new java.util.ArrayList<>();
+        reservations.add(new Reservation("Alice", "Deluxe", "D23"));
+        reservations.add(new Reservation("Bob", "Standard", "S5"));
+        reservations.add(new Reservation("Charlie", "Suite", "S87"));
 
-        while (!bookingQueue.isEmpty()) {
-            Reservation res = bookingQueue.poll();
-            boolean success = inventory.allocateRoom(res);
-            if (success) {
-                System.out.println("Reservation confirmed: " + res);
-            } else {
-                System.out.println("Reservation failed (no rooms available) for: " + res.guestName + " [" + res.roomType + "]");
+        Service breakfast = new Service("Breakfast", 20.0);
+        Service spa = new Service("Spa Access", 50.0);
+        Service airportPickup = new Service("Airport Pickup", 30.0);
+
+        // Attach services to reservations
+        addServiceToReservation(reservationServices, reservations.get(0), breakfast);
+        addServiceToReservation(reservationServices, reservations.get(0), spa);
+        addServiceToReservation(reservationServices, reservations.get(1), airportPickup);
+        addServiceToReservation(reservationServices, reservations.get(2), spa);
+
+        // Display reservations with selected services
+        for (Reservation r : reservations) {
+            System.out.println("Reservation: " + r);
+            java.util.List<Service> services = reservationServices.getOrDefault(r.roomId, new java.util.ArrayList<>());
+            double totalCost = 0;
+            System.out.println("  Selected Services:");
+            for (Service s : services) {
+                System.out.println("    - " + s.name + " ($" + s.cost + ")");
+                totalCost += s.cost;
             }
+            System.out.println("  Total Add-On Cost: $" + totalCost + "\n");
         }
+    }
 
-        inventory.printInventoryStatus();
+    static void addServiceToReservation(java.util.Map<String, java.util.List<Service>> map, Reservation r, Service s) {
+        map.computeIfAbsent(r.roomId, k -> new java.util.ArrayList<>()).add(s);
     }
 }
 
-// Reservation class
 class Reservation {
     String guestName;
     String roomType;
-    String assignedRoomId;
+    String roomId;
 
-    Reservation(String guestName, String roomType) {
+    Reservation(String guestName, String roomType, String roomId) {
         this.guestName = guestName;
         this.roomType = roomType;
-    }
-
-    void assignRoom(String roomId) {
-        this.assignedRoomId = roomId;
+        this.roomId = roomId;
     }
 
     @Override
     public String toString() {
-        return "Reservation [Guest=" + guestName + ", RoomType=" + roomType + ", RoomID=" + assignedRoomId + "]";
+        return guestName + " [" + roomType + ", RoomID=" + roomId + "]";
     }
 }
 
-// InventoryService class
-class InventoryService {
-    java.util.Map<String, Integer> roomInventory = new java.util.HashMap<>();
-    java.util.Map<String, java.util.Set<String>> allocatedRooms = new java.util.HashMap<>();
-    java.util.Random random = new java.util.Random();
+class Service {
+    String name;
+    double cost;
 
-    InventoryService() {
-        roomInventory.put("Deluxe", 2);
-        roomInventory.put("Standard", 3);
-        roomInventory.put("Suite", 1);
-
-        allocatedRooms.put("Deluxe", new java.util.HashSet<>());
-        allocatedRooms.put("Standard", new java.util.HashSet<>());
-        allocatedRooms.put("Suite", new java.util.HashSet<>());
-    }
-
-    boolean allocateRoom(Reservation res) {
-        String type = res.roomType;
-        int available = roomInventory.getOrDefault(type, 0);
-        if (available <= 0) return false;
-
-        java.util.Set<String> assignedSet = allocatedRooms.get(type);
-        String roomId;
-        do {
-            roomId = type.substring(0, 1) + (random.nextInt(100) + 1);
-        } while (assignedSet.contains(roomId));
-
-        res.assignRoom(roomId);
-        assignedSet.add(roomId);
-        roomInventory.put(type, available - 1);
-        return true;
-    }
-
-    void printInventoryStatus() {
-        System.out.println("\nCurrent Inventory Status:");
-        for (String type : roomInventory.keySet()) {
-            System.out.println(type + " - Available: " + roomInventory.get(type)
-                    + ", Allocated: " + allocatedRooms.get(type));
-        }
+    Service(String name, double cost) {
+        this.name = name;
+        this.cost = cost;
     }
 }
